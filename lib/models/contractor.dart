@@ -20,4 +20,13 @@ class Contractor {
     map["title"] = title;
     return map;
   }
+
+  factory Contractor.fromMap(Map<String, dynamic> data) => Contractor(
+        contractorId: data['id'],
+        name: data['name'],
+        city: data['city'],
+        address: data['address'],
+        phone: data['phone'],
+        title: data['title'],
+      );
 }

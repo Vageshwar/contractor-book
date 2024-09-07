@@ -1,6 +1,6 @@
 class Sites {
   int siteId, ownerId, date, active;
-  String name, location;
+  String location, name;
 
   Sites(
       {required this.siteId,
@@ -20,4 +20,13 @@ class Sites {
     map["date"] = date;
     return map;
   }
+
+  factory Sites.fromMap(Map<String, dynamic> data) => Sites(
+        siteId: data['id'],
+        ownerId: data['ownerId'],
+        date: data['date'],
+        active: data['active'],
+        name: data['name'],
+        location: data['location'],
+      );
 }

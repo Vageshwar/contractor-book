@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:contractor_book/models/contractor.dart';
 import 'package:contractor_book/models/site_images.dart';
 import 'package:contractor_book/models/sites.dart';
@@ -74,5 +76,58 @@ class DatabaseService {
 
     await db.insert('site_images', image.toMapWithoutId(),
         conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Contractor> getCurrentUser() async {
+    final db = await _databaseService.database;
+    final List<Map<String, dynamic>> contractors = await db.query('contractor');
+    if (contractors.length > 1) {
+      return Contractor.fromMap(contractors[0]);
+    } else {
+      return Contractor(
+          contractorId: 0,
+          name: "",
+          city: "",
+          address: "",
+          phone: "",
+          title: "");
+    }
+  }
+
+  Future<List<Sites>> getSites() async {
+    final db = await _databaseService.database;
+    final List<Map<String, dynamic>> sites = await db.query('site');
+    return List.generate(sites.length, (index) => Sites.fromMap(sites[index]));
+  }
+
+  Future<List<SiteImage>> getImages(siteId) async {
+    final db = await _databaseService.database;
+    final List<Map<String, dynamic>> siteImages = await db.query(
+      'site_images',
+      where: 'siteId = ?',
+      whereArgs: [siteId],
+    );
+    return List.generate(
+        siteImages.length, (index) => SiteImage.fromMap(siteImages[index]));
+  }
+
+  Future<List<Uint8List>> getSiteImages(int siteId) async {
+    final db =
+        await database; // Assuming you have a method to get the database instance
+    final List<Map<String, dynamic>> maps = await db.query(
+      'site_images',
+      columns: ['image'],
+      where: 'siteId = ?',
+      whereArgs: [siteId],
+    );
+
+    return maps.map((map) => map['image'] as Uint8List).toList();
+  }
+
+  Future<List<Sites>> getSitesWithState(state) async {
+    final db = await _databaseService.database;
+    final List<Map<String, dynamic>> sites =
+        await db.query('site', where: 'active = ', whereArgs: [state]);
+    return List.generate(sites.length, (index) => Sites.fromMap(sites[index]));
   }
 }
