@@ -5,10 +5,12 @@ import 'package:contractor_book/services/db_service.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -16,12 +18,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: SplashScreen(),
+      home: const SplashScreen(),
     );
   }
 }
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -40,19 +44,21 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkUser() async {
     Contractor user = await dbService.getCurrentUser();
-    print(user);
+    print(
+      "User $user",
+    );
     // Check if user exists
     if (user.contractorId != 0) {
       // Navigate to Homepage if user exists
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
     } else {
       // Navigate to RegisterPage if no user found
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => RegisterPage()),
+        MaterialPageRoute(builder: (context) => const RegisterPage()),
       );
     }
   }

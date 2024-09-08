@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class ContractorModel {
   final int? id;
   final int? phone;

@@ -12,7 +12,7 @@ class Contractor {
 
   //to be used when inserting a row in the table
   Map<String, dynamic> toMapWithoutId() {
-    final map = new Map<String, dynamic>();
+    final map = <String, dynamic>{};
     map["name"] = name;
     map["city"] = city;
     map["address"] = address;
@@ -26,7 +26,9 @@ class Contractor {
         name: data['name'],
         city: data['city'],
         address: data['address'],
-        phone: data['phone'],
+        phone: data['phone'] != Null && data['phone'].toString().isNotEmpty
+            ? data['phone'].toString()
+            : "",
         title: data['title'],
       );
 }

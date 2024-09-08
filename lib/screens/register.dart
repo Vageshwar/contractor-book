@@ -1,9 +1,12 @@
 import 'package:contractor_book/models/contractor.dart'; // Import Contractor model
+import 'package:contractor_book/screens/homepage.dart';
 import 'package:contractor_book/services/db_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
@@ -54,25 +57,27 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Method to hide the loading dialog
   void _hideLoadingDialog(BuildContext context) {
-    Navigator.of(context).pop();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(); // Only pop if there's something to pop
+    }
   }
 
-  // Method to insert contractor into the database
+  // Method to insert contractor into ₹the database
   Future<void> _insertContractor() async {
     Contractor contractor = Contractor(
       contractorId: 0,
-      name: _contractorName,
-      address: _address,
-      phone: _contactNo,
-      city: _city,
-      title: _selectedTitle, // Set title from the dropdown
+      name: _contractorName.toString(),
+      address: _address.toString(),
+      phone: _contactNo.toString(),
+      city: _city.toString(),
+      title: _selectedTitle.toString(), // Set title from the dropdown
     );
-
     await DatabaseService().insertContractor(contractor);
   }
 
   // Method to validate and save the form
   Future<void> _submitForm() async {
+    print("Adding");
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
@@ -85,19 +90,23 @@ class _RegisterPageState extends State<RegisterPage> {
 
         // After inserting, close the loading dialog
         _hideLoadingDialog(context);
+        await Future.delayed(Duration(milliseconds: 100));
 
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Contractor added successfully!')),
         );
-
-        // Navigate to HomePage after successful creation
-        Navigator.pushReplacementNamed(context, '/home');
-      } catch (e) {
-        // Hide the loading dialog if there's an error
+        // Hide the loading dialog
         _hideLoadingDialog(context);
-
+        // Navigate to HomePage after successful creation
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } catch (e) {
         // Show error message
+        // Hide the loading dialog
+        _hideLoadingDialog(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error adding contractor: $e')),
         );

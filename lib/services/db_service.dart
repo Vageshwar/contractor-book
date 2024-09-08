@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:contractor_book/models/contractor.dart';
 import 'package:contractor_book/models/site_images.dart';
+import 'package:contractor_book/models/site_note.dart';
 import 'package:contractor_book/models/sites.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -47,13 +48,16 @@ class DatabaseService {
       'CREATE TABLE contractor(id INTEGER PRIMARY KEY, name TEXT, title TEXT, phone INTEGER, address TEXT, city TEXT)',
     );
     await db.execute(
-      'CREATE TABLE site(id INTEGER PRIMARY KEY, name TEXT, date DATETIME, location TEXT, active INTEGER, ownerId INTEGER, FOREIGN KEY (ownerId) REFERENCES owners(id) ON DELETE SET NULL)',
+      'CREATE TABLE site(id INTEGER PRIMARY KEY, name TEXT, date DATETIME, location TEXT, active INTEGER, ownerName TEXT)',
     );
     await db.execute(
       'CREATE TABLE owner(id INTEGER PRIMARY KEY, name TEXT, number INTEGER, address TEXT)',
     );
     await db.execute(
       'CREATE TABLE site_images(id INTEGER PRIMARY KEY, siteId INTEGER, image BLOB, FOREIGN KEY (siteId) REFERENCES site(id) ON DELETE SET NULL)',
+    );
+    await db.execute(
+      'CREATE TABLE site_notes(id INTEGER PRIMARY KEY, siteId INTEGER, content TEXT, FOREIGN KEY (siteId) REFERENCES site(id) ON DELETE SET NULL)',
     );
   }
 
@@ -78,10 +82,20 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<void> addNoteForSite(int siteId, String content) async {
+    Note note = Note(
+        id: 0, siteId: siteId, content: content, dateAdded: DateTime.now());
+    final db = await _databaseService.database;
+
+    await db.insert('site_notes', note.toMapWithoutId(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   Future<Contractor> getCurrentUser() async {
     final db = await _databaseService.database;
     final List<Map<String, dynamic>> contractors = await db.query('contractor');
-    if (contractors.length > 1) {
+    if (contractors.isNotEmpty) {
+      print("Contractor $contractors[0]");
       return Contractor.fromMap(contractors[0]);
     } else {
       return Contractor(
@@ -126,8 +140,26 @@ class DatabaseService {
 
   Future<List<Sites>> getSitesWithState(state) async {
     final db = await _databaseService.database;
-    final List<Map<String, dynamic>> sites =
-        await db.query('site', where: 'active = ', whereArgs: [state]);
+    final List<Map<String, dynamic>> sites = await db.query('site');
     return List.generate(sites.length, (index) => Sites.fromMap(sites[index]));
+  }
+
+  Future<List<Note>> getNotesForSite(state) async {
+    final db = await _databaseService.database;
+    final List<Map<String, dynamic>> notes =
+        await db.query("site_notes", where: 'siteId = ?', whereArgs: [state]);
+    return List.generate(notes.length, (index) => Note.fromMap(notes[index]));
+  }
+
+  Future<void> updateSiteStatus(int siteId, int newStatus) async {
+    final db = await database; // Get the database instance
+
+    // Perform the update query
+    await db.update(
+      'site', // The table name
+      {'active': newStatus}, // The field to update with the new value
+      where: 'id = ?', // Where condition to target the specific site
+      whereArgs: [siteId], // Site ID to update
+    );
   }
 }

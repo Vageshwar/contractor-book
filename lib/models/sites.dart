@@ -1,10 +1,10 @@
 class Sites {
-  int siteId, ownerId, date, active;
-  String location, name;
+  int siteId, date, active;
+  String location, name, ownerName;
 
   Sites(
       {required this.siteId,
-      required this.ownerId,
+      required this.ownerName,
       required this.date,
       required this.active,
       required this.name,
@@ -12,10 +12,10 @@ class Sites {
 
   //to be used when inserting a row in the table
   Map<String, dynamic> toMapWithoutId() {
-    final map = new Map<String, dynamic>();
+    final map = <String, dynamic>{};
     map["name"] = name;
     map["location"] = location;
-    map["ownerId"] = ownerId;
+    map["ownerName"] = ownerName;
     map["location"] = location;
     map["date"] = date;
     return map;
@@ -23,10 +23,11 @@ class Sites {
 
   factory Sites.fromMap(Map<String, dynamic> data) => Sites(
         siteId: data['id'],
-        ownerId: data['ownerId'],
-        date: data['date'],
-        active: data['active'],
-        name: data['name'],
-        location: data['location'],
+        ownerName:
+            data['ownerName'] != Null ? data['ownerName'].toString() : "--",
+        date: data['date'] != Null ? data['date'] : 0,
+        active: data['active'] != Null ? data['active'] : 0,
+        name: data['name'] != Null ? data['name'].toString() : "--",
+        location: data['location'] != Null ? data['location'].toString() : "--",
       );
 }

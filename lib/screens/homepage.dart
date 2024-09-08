@@ -1,11 +1,14 @@
 import 'dart:typed_data';
-
+import 'package:contractor_book/screens/add_site.dart';
+import 'package:contractor_book/screens/site_details_page.dart';
 import 'package:contractor_book/services/db_service.dart';
 import 'package:flutter/material.dart';
 import 'package:contractor_book/models/sites.dart';
 import 'package:contractor_book/models/contractor.dart';
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -16,18 +19,57 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Sites>> activeSites;
   late Future<Contractor> currentContractor;
   final DatabaseService _databaseService = DatabaseService();
+  List<Sites> _filteredActiveSites = [];
+  List<Sites> _filteredArchivedSites = [];
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    fetchSites();
+    currentContractor = _databaseService.getCurrentUser();
+  }
+
+  void fetchSites() {
+    // Fetch archived and active sites from the database
     archivedSites = _databaseService.getSitesWithState(0);
     activeSites = _databaseService.getSitesWithState(1);
-    currentContractor = _databaseService.getCurrentUser();
+
+    print("Active site $activeSites");
+    print("Archived site $archivedSites");
+    archivedSites.then((sites) {
+      setState(() {
+        _filteredArchivedSites = sites;
+      });
+    });
+
+    activeSites.then((sites) {
+      print("Site $sites");
+      setState(() {
+        _filteredActiveSites = sites;
+      });
+    });
   }
 
   void _onNavItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  void _searchSites(String query, bool isActive) {
+    setState(() {
+      if (isActive) {
+        _filteredActiveSites = _filteredActiveSites.where((site) {
+          return site.name.toLowerCase().contains(query.toLowerCase()) ||
+              site.location.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      } else {
+        _filteredArchivedSites = _filteredArchivedSites.where((site) {
+          return site.name.toLowerCase().contains(query.toLowerCase()) ||
+              site.location.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      }
     });
   }
 
@@ -76,7 +118,12 @@ class _HomePageState extends State<HomePage> {
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return _buildEmptyState('No Archived Sites', Icons.archive_outlined);
         } else {
-          return _buildSitesList(snapshot.data!, false);
+          return Column(
+            children: [
+              _buildSearchBar(false),
+              Expanded(child: _buildSitesList(_filteredArchivedSites, false)),
+            ],
+          );
         }
       },
     );
@@ -97,33 +144,8 @@ class _HomePageState extends State<HomePage> {
           return Column(
             children: [
               // Search Bar and Add New Site Button
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Search Sites',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (value) {
-                          // Add search logic based on name, city, address
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Navigate to Add Site page
-                      },
-                      child: const Text('Add Site'),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(child: _buildSitesList(snapshot.data!, true)),
+              _buildSearchBar(true),
+              Expanded(child: _buildSitesList(_filteredActiveSites, true)),
             ],
           );
         }
@@ -179,11 +201,17 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(site.location),
-                      Text('Owner: ${site.ownerId}'),
+                      Text('Owner: ${site.ownerName}'),
                     ],
                   ),
                   onTap: () {
                     // Navigate to Site Details page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SiteDetailsPage(site: site),
+                      ),
+                    );
                   },
                 ),
               );
@@ -198,11 +226,17 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(site.location),
-                      Text('Owner: ${site.ownerId}'),
+                      Text('Owner: ${site.ownerName}'),
                     ],
                   ),
                   onTap: () {
                     // Navigate to Site Details page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SiteDetailsPage(site: site),
+                      ),
+                    );
                   },
                 ),
               );
@@ -250,6 +284,12 @@ class _HomePageState extends State<HomePage> {
             ElevatedButton(
               onPressed: () {
                 // Navigate to Add Site page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddSitePage(),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black, // Black background
@@ -258,6 +298,24 @@ class _HomePageState extends State<HomePage> {
               child: const Text('+ Add New Site'),
             ),
         ],
+      ),
+    );
+  }
+
+  // Search bar widget
+  Widget _buildSearchBar(bool isActive) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          labelText: 'Search Sites',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.search),
+        ),
+        onChanged: (value) {
+          _searchSites(value, isActive);
+        },
       ),
     );
   }
