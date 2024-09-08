@@ -16,7 +16,7 @@ class Sites {
     map["name"] = name;
     map["location"] = location;
     map["ownerName"] = ownerName;
-    map["location"] = location;
+    map["active"] = active;
     map["date"] = date;
     return map;
   }
@@ -26,7 +26,7 @@ class Sites {
         ownerName:
             data['ownerName'] != Null ? data['ownerName'].toString() : "--",
         date: data['date'] != Null ? data['date'] : 0,
-        active: data['active'] != Null ? data['active'] : 0,
+        active: data['active'] ?? 0,
         name: data['name'] != Null ? data['name'].toString() : "--",
         location: data['location'] != Null ? data['location'].toString() : "--",
       );

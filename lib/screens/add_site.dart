@@ -138,9 +138,6 @@ class _AddSitePageState extends State<AddSitePage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter the owner Name';
                           }
-                          if (int.tryParse(value) == null) {
-                            return 'Owner ID should be a text';
-                          }
                           return null;
                         },
                       ),

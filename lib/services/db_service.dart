@@ -140,14 +140,15 @@ class DatabaseService {
 
   Future<List<Sites>> getSitesWithState(state) async {
     final db = await _databaseService.database;
-    final List<Map<String, dynamic>> sites = await db.query('site');
+    final List<Map<String, dynamic>> sites = await db.query('site',
+        where: 'active = ?', whereArgs: [state != Null ? state : 0]);
     return List.generate(sites.length, (index) => Sites.fromMap(sites[index]));
   }
 
   Future<List<Note>> getNotesForSite(state) async {
     final db = await _databaseService.database;
-    final List<Map<String, dynamic>> notes =
-        await db.query("site_notes", where: 'siteId = ?', whereArgs: [state]);
+    final List<Map<String, dynamic>> notes = await db.query("site_notes",
+        where: 'siteId = ?', whereArgs: [state != Null ? state : 0]);
     return List.generate(notes.length, (index) => Note.fromMap(notes[index]));
   }
 
