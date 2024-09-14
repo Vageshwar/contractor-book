@@ -11,18 +11,20 @@ class Note {
     required this.dateAdded,
   });
 
+  // Convert to map for inserting into the database
   Map<String, dynamic> toMapWithoutId() {
     final map = <String, dynamic>{};
     map["content"] = content;
     map["siteId"] = siteId;
-    map["dateAdded"] = dateAdded;
+    map["dateAdded"] = dateAdded.millisecondsSinceEpoch; // Store as timestamp
     return map;
   }
 
+  // Convert from map when retrieving from the database
   factory Note.fromMap(Map<String, dynamic> data) => Note(
         id: data['id'],
         siteId: data['siteId'],
         content: data['content'],
-        dateAdded: data['dateAdded'],
+        dateAdded: DateTime.fromMillisecondsSinceEpoch(data['dateAdded']),
       );
 }

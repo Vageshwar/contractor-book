@@ -1,10 +1,13 @@
-import 'dart:typed_data';
 import 'package:contractor_book/screens/add_site.dart';
+import 'package:contractor_book/screens/profile_tab.dart';
 import 'package:contractor_book/screens/site_details_page.dart';
 import 'package:contractor_book/services/db_service.dart';
+import 'package:contractor_book/widgets/search_bar.dart';
+import 'package:contractor_book/widgets/site_list.dart';
 import 'package:flutter/material.dart';
 import 'package:contractor_book/models/sites.dart';
 import 'package:contractor_book/models/contractor.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   List<Sites> _filteredActiveSites = [];
   List<Sites> _filteredArchivedSites = [];
   TextEditingController _searchController = TextEditingController();
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -30,25 +34,54 @@ class _HomePageState extends State<HomePage> {
     currentContractor = _databaseService.getCurrentUser();
   }
 
-  void fetchSites() {
-    // Fetch archived and active sites from the database
-    archivedSites = _databaseService.getSitesWithState(0);
-    activeSites = _databaseService.getSitesWithState(1);
-
-    print("Active site $activeSites");
-    print("Archived site $archivedSites");
-    archivedSites.then((sites) {
-      setState(() {
-        _filteredArchivedSites = sites;
-      });
+  Future<void> fetchSites() async {
+    setState(() {
+      isLoading = true; // Start loading
     });
+    List<Sites> archived = await _databaseService.getSitesWithState(0);
+    List<Sites> active = await _databaseService.getSitesWithState(1);
 
-    activeSites.then((sites) {
-      print("Site $sites");
-      setState(() {
-        _filteredActiveSites = sites;
-      });
+    setState(() {
+      _filteredArchivedSites = archived;
+      _filteredActiveSites = active;
+      isLoading = false;
     });
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: ListView.builder(
+        itemCount: 5, // Show 5 shimmer items as a placeholder
+        itemBuilder: (context, index) {
+          return Padding(
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Container(
+              height: 100.0,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Use `await` to wait for the result from AddSitePage
+  Future<void> _navigateToAddSite() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddSitePage()),
+    );
+
+    if (result == true) {
+      // Refresh site list after adding a new site
+      await fetchSites();
+    }
   }
 
   void _onNavItemTapped(int index) {
@@ -59,16 +92,16 @@ class _HomePageState extends State<HomePage> {
 
   void _searchSites(String query, bool isActive) {
     setState(() {
+      List<Sites> filteredSites =
+          isActive ? _filteredActiveSites : _filteredArchivedSites;
+      filteredSites = filteredSites.where((site) {
+        return site.name.toLowerCase().contains(query.toLowerCase()) ||
+            site.location.toLowerCase().contains(query.toLowerCase());
+      }).toList();
       if (isActive) {
-        _filteredActiveSites = _filteredActiveSites.where((site) {
-          return site.name.toLowerCase().contains(query.toLowerCase()) ||
-              site.location.toLowerCase().contains(query.toLowerCase());
-        }).toList();
+        _filteredActiveSites = filteredSites;
       } else {
-        _filteredArchivedSites = _filteredArchivedSites.where((site) {
-          return site.name.toLowerCase().contains(query.toLowerCase()) ||
-              site.location.toLowerCase().contains(query.toLowerCase());
-        }).toList();
+        _filteredArchivedSites = filteredSites;
       }
     });
   }
@@ -87,6 +120,19 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+      floatingActionButton: (_selectedIndex == 0 || _selectedIndex == 1)
+          ? FloatingActionButton(
+              onPressed: _navigateToAddSite, // Navigate and wait for result
+              child: const Icon(Icons.add_circle_outline, size: 30),
+              backgroundColor: Colors.white, // Minimalist white background
+              foregroundColor: Colors.blueAccent, // Blue icon for intuitiveness
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(15), // Rounded, modern shape
+              ),
+              elevation: 5, // Slight shadow for a floating effect
+            )
+          : null, // No FAB on the "Profile" tab
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onNavItemTapped,
@@ -108,52 +154,63 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Archived Sites Tab
+  Future<void> _navigateToSiteDetails(Sites site) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SiteDetailsPage(site: site)),
+    );
+
+    // If result is true, refresh the site list
+    if (result == true) {
+      await fetchSites();
+    }
+  }
+
   Widget _buildArchivedSitesTab() {
-    return FutureBuilder<List<Sites>>(
-      future: archivedSites,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildEmptyState('No Archived Sites', Icons.archive_outlined);
-        } else {
-          return Column(
+    if (isLoading) {
+      return _buildLoadingShimmer(); // Show shimmer while loading
+    }
+    return _filteredArchivedSites.isEmpty
+        ? _buildEmptyState('No Archived Sites', Icons.archive_outlined)
+        : Column(
             children: [
-              _buildSearchBar(false),
-              Expanded(child: _buildSitesList(_filteredArchivedSites, false)),
+              MySearchBar(
+                  controller: _searchController,
+                  isActive: false,
+                  onSearch: _searchSites),
+              Expanded(
+                  child: SiteList(
+                sites: _filteredArchivedSites,
+                isActive: false,
+                onTapSite: _navigateToSiteDetails,
+              )),
             ],
           );
-        }
-      },
-    );
   }
 
-  // Active Sites Tab
   Widget _buildActiveSitesTab() {
-    return FutureBuilder<List<Sites>>(
-      future: activeSites,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildEmptyState(
-              'No Active Sites', Icons.construction_outlined,
-              showAddButton: true);
-        } else {
-          return Column(
+    if (isLoading) {
+      return _buildLoadingShimmer(); // Show shimmer while loading
+    }
+    return _filteredActiveSites.isEmpty
+        ? _buildEmptyState('No Active Sites', Icons.construction_outlined,
+            showAddButton: true)
+        : Column(
             children: [
-              // Search Bar and Add New Site Button
-              _buildSearchBar(true),
-              Expanded(child: _buildSitesList(_filteredActiveSites, true)),
+              MySearchBar(
+                  controller: _searchController,
+                  isActive: true,
+                  onSearch: _searchSites),
+              Expanded(
+                  child: SiteList(
+                sites: _filteredActiveSites,
+                isActive: true,
+                onTapSite: _navigateToSiteDetails,
+              )),
             ],
           );
-        }
-      },
-    );
   }
 
-  // Profile Tab
   Widget _buildProfileTab() {
     return FutureBuilder<Contractor>(
       future: currentContractor,
@@ -164,17 +221,10 @@ class _HomePageState extends State<HomePage> {
           return const Center(child: Text('Error loading profile data'));
         } else {
           final contractor = snapshot.data!;
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProfileField('Name', contractor.name),
-                _buildProfileField('Address', contractor.address),
-                _buildProfileField('City', contractor.city),
-                _buildProfileField('Phone', contractor.phone),
-                _buildProfileField('Title', contractor.title),
-              ],
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Expanded(
+              child: ProfileTab(),
             ),
           );
         }
@@ -182,72 +232,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSitesList(List<Sites> sites, bool isActive) {
-    return ListView.builder(
-      itemCount: sites.length,
-      itemBuilder: (context, index) {
-        final site = sites[index];
-        return FutureBuilder<List<Uint8List>>(
-          future: _databaseService.getSiteImages(site.siteId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.image_not_supported),
-                  title: Text(site.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(site.location),
-                      Text('Owner: ${site.ownerName}'),
-                    ],
-                  ),
-                  onTap: () {
-                    // Navigate to Site Details page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SiteDetailsPage(site: site),
-                      ),
-                    );
-                  },
-                ),
-              );
-            } else {
-              final images = snapshot.data!;
-              return Card(
-                child: ListTile(
-                  leading:
-                      Image.memory(images.first), // Display the first image
-                  title: Text(site.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(site.location),
-                      Text('Owner: ${site.ownerName}'),
-                    ],
-                  ),
-                  onTap: () {
-                    // Navigate to Site Details page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SiteDetailsPage(site: site),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }
-          },
-        );
-      },
-    );
-  }
-
-  // Profile Field with Edit option
   Widget _buildProfileField(String label, String value) {
     return Row(
       children: [
@@ -267,7 +251,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Empty state widget for Archived and Active tabs
   Widget _buildEmptyState(String message, IconData icon,
       {bool showAddButton = false}) {
     return Center(
@@ -276,46 +259,16 @@ class _HomePageState extends State<HomePage> {
         children: [
           Icon(icon, size: 100),
           const SizedBox(height: 10),
-          Text(
-            message,
-            style: const TextStyle(fontSize: 18, color: Colors.red),
-          ),
+          Text(message,
+              style: const TextStyle(fontSize: 18, color: Colors.red)),
           if (showAddButton)
             ElevatedButton(
-              onPressed: () {
-                // Navigate to Add Site page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddSitePage(),
-                  ),
-                );
-              },
+              onPressed: _navigateToAddSite,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black, // Black background
-                foregroundColor: Colors.white, // White text
-              ),
+                  backgroundColor: Colors.black, foregroundColor: Colors.white),
               child: const Text('+ Add New Site'),
             ),
         ],
-      ),
-    );
-  }
-
-  // Search bar widget
-  Widget _buildSearchBar(bool isActive) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: const InputDecoration(
-          labelText: 'Search Sites',
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.search),
-        ),
-        onChanged: (value) {
-          _searchSites(value, isActive);
-        },
       ),
     );
   }

@@ -44,9 +44,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkUser() async {
     Contractor user = await dbService.getCurrentUser();
-    print(
-      "User $user",
-    );
     // Check if user exists
     if (user.contractorId != 0) {
       // Navigate to Homepage if user exists

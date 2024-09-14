@@ -39,10 +39,38 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
     }
   }
 
+  Future<void> _showArchiveConfirmationDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Archive Site'),
+          content: const Text('Are you sure you want to archive this site?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _archiveSite(); // Archive the site
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Archive'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _archiveSite() async {
     await _databaseService.updateSiteStatus(
         widget.site.siteId, 0); // Set is_active to 0
-    Navigator.pop(context); // Go back to previous page
+    Navigator.pop(context, true); // Go back to previous page
   }
 
   @override
@@ -50,14 +78,6 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.site.name),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.archive),
-            onPressed: () {
-              _archiveSite();
-            },
-          )
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -65,6 +85,25 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSiteDetailsSection(),
+            const SizedBox(height: 20),
+            if (widget.site.active ==
+                1) // Only show archive button if site is active
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: _showArchiveConfirmationDialog,
+                  icon: const Icon(Icons.archive),
+                  label: const Text('Archive Site'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12.0, horizontal: 24.0),
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             _buildNotesSection(),
           ],
@@ -75,7 +114,10 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
 
   Widget _buildSiteDetailsSection() {
     return Card(
-      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), // Softer corners
+      ),
+      elevation: 2, // Minimal shadow for a clean look
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -83,14 +125,14 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
           children: [
             _buildDetailRow('Site Name', widget.site.name),
             _buildDetailRow('Location', widget.site.location),
-            _buildDetailRow('Owner ID', widget.site.ownerName.toString()),
+            _buildDetailRow(
+                'Owner Name', widget.site.ownerName), // Corrected label
             _buildDetailRow(
                 'Date Created',
                 DateFormat('yyyy-MM-dd').format(
                     DateTime.fromMillisecondsSinceEpoch(widget.site.date))),
             _buildDetailRow(
                 'Is Active', widget.site.active == 1 ? 'Yes' : 'No'),
-            // Add more fields as needed
           ],
         ),
       ),
@@ -105,9 +147,15 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
           ),
-          Text(value),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16),
+          ),
         ],
       ),
     );
@@ -150,9 +198,11 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
         Expanded(
           child: TextField(
             controller: _noteController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Enter note',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),
@@ -160,6 +210,13 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
         ElevatedButton(
           onPressed: _addNote,
           child: const Text('Add Note'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
       ],
     );
@@ -167,7 +224,7 @@ class _SiteDetailsPageState extends State<SiteDetailsPage> {
 
   Widget _buildNotesTable(List<Note> notes) {
     return Table(
-      border: TableBorder.all(),
+      border: TableBorder.all(color: Colors.grey.shade300), // Subtle border
       columnWidths: const {
         0: FlexColumnWidth(1),
         1: FlexColumnWidth(3),

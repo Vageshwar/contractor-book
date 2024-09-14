@@ -16,10 +16,8 @@ class _AddSitePageState extends State<AddSitePage> {
   final _nameController = TextEditingController();
   final _locationController = TextEditingController();
   final _ownerIdController = TextEditingController();
-  final _dateController = TextEditingController();
 
   bool _isLoading = false;
-  int _activeStatus = 1; // Default active status as 1
   Uint8List? _selectedImage;
 
   final ImagePicker _picker = ImagePicker();
@@ -57,20 +55,20 @@ class _AddSitePageState extends State<AddSitePage> {
           siteId: 0, // Auto increment
           ownerName: _ownerIdController.text,
           date: DateTime.now().millisecondsSinceEpoch,
-          active: _activeStatus,
+          active: 1,
           name: _nameController.text,
           location: _locationController.text,
         );
 
         // Insert site into the database
-        await DatabaseService().insertSite(newSite);
+        final newSiteId = await DatabaseService().insertSite(newSite);
 
         // If an image is selected, insert it into the database
         if (_selectedImage != null) {
           final newSiteImage = SiteImage(
             imageId: 0, // Auto increment
             image: _selectedImage!,
-            siteId: newSite.siteId, // Site ID will be automatically assigned
+            siteId: newSiteId,
           );
           await DatabaseService().insertImage(newSiteImage);
         }
@@ -78,7 +76,7 @@ class _AddSitePageState extends State<AddSitePage> {
         _showSnackBar("Site added successfully", Colors.green);
 
         // Navigate to the homepage or refresh the current page
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       } catch (e) {
         _showSnackBar("Error: $e", Colors.red);
       } finally {
@@ -95,93 +93,146 @@ class _AddSitePageState extends State<AddSitePage> {
       appBar: AppBar(
         title: const Text("Add New Site"),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      TextFormField(
-                        controller: _nameController,
-                        decoration:
-                            const InputDecoration(labelText: 'Site Name'),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the site name';
-                          }
-                          return null;
-                        },
-                      ),
-                      TextFormField(
-                        controller: _locationController,
-                        decoration:
-                            const InputDecoration(labelText: 'Location'),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the location';
-                          }
-                          return null;
-                        },
-                      ),
-                      TextFormField(
-                        controller: _ownerIdController,
-                        decoration:
-                            const InputDecoration(labelText: 'Owner Name'),
-                        keyboardType: TextInputType.name,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the owner Name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      _selectedImage != null
-                          ? Image.memory(
-                              _selectedImage!,
-                              height: 200,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        children: [
+          _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.camera),
-                            label: const Text("Camera"),
-                            onPressed: () => _pickImage(ImageSource.camera),
+                          _buildTextField(
+                            controller: _nameController,
+                            label: 'Site Name',
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter the site name';
+                              }
+                              return null;
+                            },
                           ),
-                          const SizedBox(width: 10),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.photo_library),
-                            label: const Text("Gallery"),
-                            onPressed: () => _pickImage(ImageSource.gallery),
+                          const SizedBox(height: 10),
+                          _buildTextField(
+                            controller: _locationController,
+                            label: 'Location',
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter the location';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          _buildTextField(
+                            controller: _ownerIdController,
+                            label: 'Owner Name',
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter the owner name';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _selectedImage != null
+                              ? Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Image.memory(
+                                    _selectedImage!,
+                                    height: 200,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Container(),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.camera_alt_outlined),
+                                label: const Text("Camera"),
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.blueAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () => _pickImage(ImageSource.camera),
+                              ),
+                              const SizedBox(width: 10),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.photo_library_outlined),
+                                label: const Text("Gallery"),
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.blueAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    _pickImage(ImageSource.gallery),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black, // Button color
+                                foregroundColor: Colors.white, // Text color
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12.0, horizontal: 32.0),
+                              ),
+                              onPressed: _submitForm,
+                              child: const Text('Submit'),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black, // Button color
-                            foregroundColor: Colors.white, // Text color
-                          ),
-                          onPressed: _submitForm,
-                          child: const Text('Submit'),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build text fields with a consistent design
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.blueAccent),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      validator: validator,
     );
   }
 }

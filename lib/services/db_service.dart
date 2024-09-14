@@ -57,7 +57,7 @@ class DatabaseService {
       'CREATE TABLE site_images(id INTEGER PRIMARY KEY, siteId INTEGER, image BLOB, FOREIGN KEY (siteId) REFERENCES site(id) ON DELETE SET NULL)',
     );
     await db.execute(
-      'CREATE TABLE site_notes(id INTEGER PRIMARY KEY, siteId INTEGER, content TEXT, FOREIGN KEY (siteId) REFERENCES site(id) ON DELETE SET NULL)',
+      'CREATE TABLE site_notes(id INTEGER PRIMARY KEY, siteId INTEGER,  dateAdded INTEGER, content TEXT, FOREIGN KEY (siteId) REFERENCES site(id) ON DELETE SET NULL)',
     );
   }
 
@@ -68,11 +68,12 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> insertSite(Sites site) async {
+  Future<int> insertSite(Sites site) async {
     final db = await _databaseService.database;
 
-    await db.insert('site', site.toMapWithoutId(),
+    final id = await db.insert('site', site.toMapWithoutId(),
         conflictAlgorithm: ConflictAlgorithm.replace);
+    return id;
   }
 
   Future<void> insertImage(SiteImage image) async {
@@ -142,6 +143,7 @@ class DatabaseService {
     final db = await _databaseService.database;
     final List<Map<String, dynamic>> sites = await db.query('site',
         where: 'active = ?', whereArgs: [state != Null ? state : 0]);
+    print(sites);
     return List.generate(sites.length, (index) => Sites.fromMap(sites[index]));
   }
 
@@ -161,6 +163,16 @@ class DatabaseService {
       {'active': newStatus}, // The field to update with the new value
       where: 'id = ?', // Where condition to target the specific site
       whereArgs: [siteId], // Site ID to update
+    );
+  }
+
+  Future<void> updateContractor(Contractor contractor) async {
+    final db = await _databaseService.database;
+    await db.update(
+      'contractor',
+      contractor.toMapWithoutId(),
+      where: 'id = ?',
+      whereArgs: [contractor.contractorId],
     );
   }
 }
